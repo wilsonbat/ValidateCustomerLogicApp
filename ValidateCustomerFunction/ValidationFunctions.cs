@@ -4,7 +4,7 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
 using ValidationLibrary;
-using System.Threading.Tasks;  // <--- important for async/await
+using System.Threading.Tasks;
 
 namespace Company.Function
 {
@@ -18,28 +18,30 @@ namespace Company.Function
         }
 
         [Function("ValidateEmail")]
-        public async Task<HttpResponseData> ValidateEmail(
-            [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
+        public HttpResponseData ValidateEmail(
+            [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req,
+            string email)
         {
-            var request = await req.ReadFromJsonAsync<ValidationRequest>();
-            var email = request?.Email ?? string.Empty;
-            var result = EmailValidator.Validate(email);
+            _logger.LogInformation("ValidateEmail called with: {Email}", email);
+
+            var result = EmailValidator.Validate(email ?? "");
 
             var response = req.CreateResponse(HttpStatusCode.OK);
-            await response.WriteAsJsonAsync(result);
+            response.WriteAsJsonAsync(result).GetAwaiter().GetResult();
             return response;
         }
 
         [Function("ValidatePhone")]
-        public async Task<HttpResponseData> ValidatePhone(
-            [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
+        public HttpResponseData ValidatePhone(
+            [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req,
+            string phoneNumber)
         {
-            var request = await req.ReadFromJsonAsync<ValidationRequest>();
-            var phone = request?.PhoneNumber ?? string.Empty;
-            var result = PhoneValidator.Validate(phone);
+            _logger.LogInformation("ValidatePhone called with: {Phone}", phoneNumber);
+
+            var result = PhoneValidator.Validate(phoneNumber ?? "");
 
             var response = req.CreateResponse(HttpStatusCode.OK);
-            await response.WriteAsJsonAsync(result);
+            response.WriteAsJsonAsync(result).GetAwaiter().GetResult();
             return response;
         }
 
