@@ -1,0 +1,16 @@
+{
+  "folders": [
+    {
+      "name": "CustLogicApp",
+      "path": "./CustLogicApp"
+    }
+  ],
+  "settings": {
+    "terminal.integrated.env.windows": {
+      "PATH": "C:\\Users\\vivek\\.azurelogicapps\\dependencies\\DotNetSDK;${env:PATH}"
+    },
+    "omnisharp.dotNetCliPaths": [
+      "C:\\Users\\vivek\\.azurelogicapps\\dependencies\\DotNetSDK"
+    ]
+  }
+}

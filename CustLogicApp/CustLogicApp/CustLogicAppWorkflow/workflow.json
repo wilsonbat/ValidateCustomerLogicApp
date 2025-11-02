@@ -1,0 +1,210 @@
+{
+  "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "contentVersion": "1.0.0.0",
+        "triggers": {
+            "When_an_HTTP_request_is_received": {
+                "type": "Request",
+                "kind": "Http",
+                "inputs": {
+                    "method": "POST",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "customerId": {
+                                "type": "string"
+                            },
+                            "email": {
+                                "type": "string"
+                            },
+                            "phoneNumber": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "customerId",
+                            "email",
+                            "phoneNumber"
+                        ]
+                    }
+                }
+            }
+        },
+        "actions": {
+            "Parse_JSON": {
+                "runAfter": {},
+                "type": "ParseJson",
+                "inputs": {
+                    "content": "@triggerBody()",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "email": {
+                                "type": "string"
+                            },
+                            "phoneNumber": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "Condition": {
+                "actions": {
+                    "Compose_true": {
+                        "type": "Compose",
+                        "inputs": {
+                            "status": "success",
+                            "message": "Customer data validated successfully.",
+                            "email": "@{body('Parse_JSON')?['email']}",
+                            "phoneNumber": "@{body('Parse_JSON')?['phoneNumber']}"
+                        }
+                    },
+                    "Parse_JSON_1": {
+                        "runAfter": {
+                            "Compose_true": [
+                                "Succeeded"
+                            ]
+                        },
+                        "type": "ParseJson",
+                        "inputs": {
+                            "content": "@outputs('Compose_true')",
+                            "schema": {
+                                "status": "success",
+                                "message": "Customer data validated successfully.",
+                                "email": "john.doe@example.com",
+                                "phoneNumber": "123-456-7890"
+                            }
+                        }
+                    }
+                },
+                "runAfter": {
+                    "ValidatePhone": [
+                        "Succeeded"
+                    ]
+                },
+                "else": {
+                    "actions": {
+                        "Compose_false": {
+                            "type": "Compose",
+                            "inputs": {
+                                "status": "error",
+                                "message": [
+                                    "@{body('ValidateEmail')?['Message']}",
+                                    "@{body('ValidatePhone')?['Message']}"
+                                ]
+                            }
+                        },
+                        "Parse_JSON_2": {
+                            "runAfter": {
+                                "Compose_false": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "ParseJson",
+                            "inputs": {
+                                "content": "@outputs('Compose_false')",
+                                "schema": {
+                                    "status": "error",
+                                    "message": [
+                                        "Invalid email format.",
+                                        "Phone number is valid."
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "expression": {
+                    "and": [
+                        {
+                            "equals": [
+                                "@body('ValidatePhone')?['IsValid']",
+                                true
+                            ]
+                        },
+                        {
+                            "equals": [
+                                "@body('ValidateEmail')?['IsValid']",
+                                true
+                            ]
+                        }
+                    ]
+                },
+                "type": "If"
+            },
+            "Response": {
+                "runAfter": {
+                    "Condition": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Response",
+                "kind": "Http",
+                "inputs": {
+                    "statusCode": "@if(equals(body('Parse_JSON_1')?['status'], 'success'), 200, 400)",
+                    "body": {
+                        "customerId": "@{triggerBody()?['customerId']}",
+                        "emailValidation": {
+                            "isValid": "@body('ValidateEmail')?['IsValid']",
+                            "message": "@body('ValidateEmail')?['Message']"
+                        },
+                        "phoneValidation": {
+                            "isValid": "@body('ValidatePhone')?['IsValid']",
+                            "message": "@body('ValidatePhone')?['Message']"
+                        },
+                        "status": "@{if(equals(body('Parse_JSON_1')?['status'], 'success'), body('Parse_JSON_1')?['status'], body('Parse_JSON_2')?['status'])}"
+                    }
+                }
+            },
+            "ValidateEmail": {
+                "runAfter": {
+                    "Parse_JSON": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Http",
+                "inputs": {
+                    "uri": "http://localhost:7072/api/ValidateEmail",
+                    "method": "POST",
+                    "body": {
+                        "email": "@{body('Parse_JSON')?['email']}"
+                    }
+                },
+                "runtimeConfiguration": {
+                    "contentTransfer": {
+                        "transferMode": "Chunked"
+                    }
+                }
+            },
+            "ValidatePhone": {
+                "runAfter": {
+                    "ValidateEmail": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Http",
+                "inputs": {
+                    "uri": "http://localhost:7072/api/ValidatePhone",
+                    "method": "POST",
+                    "body": {
+                        "phoneNumber": "@{body('Parse_JSON')?['phoneNumber']}"
+                    }
+                },
+                "runtimeConfiguration": {
+                    "contentTransfer": {
+                        "transferMode": "Chunked"
+                    }
+                }
+            }
+        },
+        "outputs": {},
+        "parameters": {
+            "$connections": {
+                "type": "Object",
+                "defaultValue": {}
+            }
+        }
+    },
+  "kind": "Stateful"
+}

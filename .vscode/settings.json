@@ -1,0 +1,11 @@
+{
+    "azureFunctions.deploySubpath": "ValidateCustomerFunction/bin/Release/net8.0/publish",
+    "azureFunctions.projectLanguage": "C#",
+    "azureFunctions.projectRuntime": "~4",
+    "azureFunctions.preDeployTask": "publish (functions)",
+    "azureLogicAppsStandard.deploySubpath": ".",
+    "azureLogicAppsStandard.projectSubpath": "ValidateCustomerApp/ValidateCustomerApp",
+    "azureLogicAppsStandard.projectLanguage": "JavaScript",
+    "azureLogicAppsStandard.projectRuntime": "~4",
+    "azureFunctions.suppressProject": true
+}
