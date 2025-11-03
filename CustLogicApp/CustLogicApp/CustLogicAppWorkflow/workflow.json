@@ -142,7 +142,7 @@
                 "type": "Response",
                 "kind": "Http",
                 "inputs": {
-                    "statusCode": "@if(equals(body('Parse_JSON_1')?['status'], 'success'), 200, 400)",
+                    "statusCode": "@if(equals(body('Parse_JSON_1')?['status'], 'success'), 200, 200)",
                     "body": {
                         "customerId": "@{triggerBody()?['customerId']}",
                         "emailValidation": {
