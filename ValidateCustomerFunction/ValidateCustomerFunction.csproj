@@ -17,8 +17,6 @@
     <PackageReference Include="System.Net.Http.Json" Version="8.0.0" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="ValidationLibrary">
-      <HintPath>../ValidationLibrary/bin/Release/net8.0/ValidationLibrary.dll</HintPath>
-    </Reference>
+    <ProjectReference Include="..\ValidationLibrary\ValidationLibrary.csproj" />
   </ItemGroup>
 </Project>

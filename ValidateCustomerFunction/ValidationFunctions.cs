@@ -30,18 +30,47 @@ namespace Company.Function
         /// <param name="email">Email string to validate. Expected from route or query (or null if not provided).</param>
         /// <returns>HTTP 200 response containing a <see cref="ValidationResults"/> JSON payload with IsValid and Message.</returns>
         [Function("ValidateEmail")]
-        public HttpResponseData ValidateEmail(
+        public async Task<HttpResponseData> ValidateEmail(
             [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req,
             string email)
         {
-            _logger.LogInformation("ValidateEmail called with: {Email}", email);
+            // Prefer email provided in JSON body (from callers such as Logic Apps). Fall back to route/query param.
+            _logger.LogInformation("ValidateEmail called");
 
-            var result = EmailValidator.Validate(email ?? "");
+            ValidationRequest? body = null;
+            if (req.Body != null && req.Body.CanRead)
+            {
+                try
+                {
+                    req.Body.Position = 0;
+                    body = await System.Text.Json.JsonSerializer.DeserializeAsync<ValidationRequest>(req.Body);
+                }
+                catch
+                {
+                    // ignore deserialization errors and fall back to query/route value
+                }
+                finally
+                {
+                    if (req.Body.CanSeek)
+                        req.Body.Position = 0;
+                }
+            }
+
+            var effectiveEmail = body?.Email ?? email ?? string.Empty;
+            _logger.LogInformation("ValidateEmail called with: {Email}", effectiveEmail);
+
+            var result = EmailValidator.Validate(effectiveEmail);
 
             var response = req.CreateResponse(HttpStatusCode.OK);
-            // Note: WriteAsJsonAsync is asynchronous; using .GetAwaiter().GetResult() blocks synchronously.
-            // Prefer making the function async and using await to avoid potential thread-pool blocking.
-            response.WriteAsJsonAsync(result).GetAwaiter().GetResult();
+            response.Headers.Add("Content-Type", "application/json; charset=utf-8");
+            
+            // Serialize with specific options to ensure clean JSON output
+            var options = new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented = false
+            };
+            var json = System.Text.Json.JsonSerializer.Serialize(result, options);
+            await response.WriteStringAsync(json);
             return response;
         }
         /// <summary>
@@ -51,16 +80,47 @@ namespace Company.Function
         /// <param name="phoneNumber">Phone number string to validate. Expected from route or query (or null if not provided).</param>
         /// <returns>HTTP 200 response containing a <see cref="ValidationResults"/> JSON payload.</returns>
         [Function("ValidatePhone")]
-        public HttpResponseData ValidatePhone(
+        public async Task<HttpResponseData> ValidatePhone(
             [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req,
             string phoneNumber)
         {
-            _logger.LogInformation("ValidatePhone called with: {Phone}", phoneNumber);
+            // Prefer phone number provided in JSON body (from callers such as Logic Apps). Fall back to route/query param.
+            _logger.LogInformation("ValidatePhone called");
 
-            var result = PhoneValidator.Validate(phoneNumber ?? "");
+            ValidationRequest? body = null;
+            if (req.Body != null && req.Body.CanRead)
+            {
+                try
+                {
+                    req.Body.Position = 0;
+                    body = await System.Text.Json.JsonSerializer.DeserializeAsync<ValidationRequest>(req.Body);
+                }
+                catch
+                {
+                    // ignore deserialization errors and fall back to query/route value
+                }
+                finally
+                {
+                    if (req.Body.CanSeek)
+                        req.Body.Position = 0;
+                }
+            }
+
+            var effectivePhone = body?.PhoneNumber ?? phoneNumber ?? string.Empty;
+            _logger.LogInformation("ValidatePhone called with: {Phone}", effectivePhone);
+
+            var result = PhoneValidator.Validate(effectivePhone);
 
             var response = req.CreateResponse(HttpStatusCode.OK);
-            response.WriteAsJsonAsync(result).GetAwaiter().GetResult();
+            response.Headers.Add("Content-Type", "application/json; charset=utf-8");
+            
+            // Serialize with specific options to ensure clean JSON output
+            var options = new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented = false
+            };
+            var json = System.Text.Json.JsonSerializer.Serialize(result, options);
+            await response.WriteStringAsync(json);
             return response;
         }
 
