@@ -106,7 +106,8 @@ ValidatePhone: [POST] http://localhost:7072/api/ValidatePhone
 ### Retrieving URL for LogicApp w/ signature
 
 1. Go to your Logic App workspace and access the workflow.json file
-2. Right click and go to overview to retrieve the url as shown in following figure
+2. Run debug mode for the logic app
+3. Right click and go to overview to retrieve the url as shown in following figure
 
 ![Retieve Logic App URL](./docs/images/retrieve-logicapp-url-test.png)
 
@@ -133,6 +134,46 @@ curl -X POST http://localhost:7071/api/CustLogicAppWorkflow/triggers/When_an_HTT
      -d "{\"customerId\": \"12345\",\"email\": \"john.doe@example.com\",\"phoneNumber\": \"123-456-7890\"}
 ```
 
+## Running unit tests
+
+This repository contains two test projects. Run them from PowerShell or your preferred terminal.
+
+- ValidationLibrary unit tests
+
+   ```powershell
+   cd ValidationLibrary.Tests
+   dotnet test --verbosity normal
+   ```
+
+- ValidateCustomerFunction unit tests (function logic)
+
+   ```powershell
+   cd ValidateCustomerFunction.Tests
+   dotnet test --verbosity normal
+   ```
+
+You can also run both test projects from the solution root:
+
+```powershell
+dotnet test ./ValidationLibrary.Tests --verbosity normal
+dotnet test ./ValidateCustomerFunction.Tests --verbosity normal
+# or run all tests in the solution
+dotnet test --verbosity normal
+```
+
+What to expect
+- Tests build the projects and execute the test suite. Typical output ends with:
+
+   Test run for ...
+   Test Run Successful.
+   Total tests: N. Passed: N. Failed: 0. Skipped: 0.
+
+Quick troubleshooting
+- If tests fail to build, run `dotnet restore` in the solution root first.
+- If you hit package or version conflicts, ensure your SDK is .NET 8 and packages are up-to-date (see project files).
+- Some tests mock function worker types — ensure no Functions host is actively locking files in the project output while running tests.
+
+
 ## Validation Rules
 
 ### Email Validation
@@ -153,6 +194,42 @@ The solution follows this flow:
 2. Logic App parses input JSON
 3. Calls ValidateEmail and ValidatePhone functions in parallel
 4. Aggregates results and returns response
+
+## Assumptions
+
+The following assumptions describe input formats, design and coding choices, runtime expectations, and testing/deployment constraints for this project.
+
+- Inputs & API contract
+   - Functions accept JSON POST bodies matching `ValidationRequest` (examples below). When present, body values take precedence over route/query parameters for backward compatibility.
+   - Requests MUST use `Content-Type: application/json` and UTF-8 encoding.
+   - Expected request shapes:
+      - Email: `{ "Email": "user@example.com" }`
+      - Phone: `{ "PhoneNumber": "123-456-7890" }`
+
+- Response contract
+   - Successful responses return HTTP 200 with a JSON payload matching `ValidationResults` ({ "IsValid": bool, "Message": string }).
+   - The project sets `Content-Type: application/json; charset=utf-8` for responses.
+
+- Design & coding choices
+   - Targets .NET 8 using the Azure Functions isolated worker model (`dotnet-isolated`).
+   - Uses System.Text.Json for serialization and writes responses with async APIs to avoid synchronous IO issues.
+   - Unit tests avoid mocking extension methods like `WriteAsJsonAsync`; they capture response bodies via `MemoryStream` instead.
+   - On deserialization failure, the function falls back to route/query values instead of returning 4xx, to preserve compatibility with callers that don't send JSON bodies.
+
+- Testing assumptions
+   - Unit tests use xUnit and Moq. No Azure services are required for unit tests (Azurite is not required).
+   - Ensure any running Functions host is stopped before running tests to avoid locked files in `bin/`.
+
+- Local development & deployment
+   - Local host is typically started with `func start --port <port>` and expects `host.json` and the `.csproj` at the project root (`ValidateCustomerFunction`).
+   - Build changes require rebuilding (`dotnet build`/`dotnet publish`) and restarting the Functions host to pick up new DLLs.
+   - Publish output is placed under `ValidateCustomerFunction\bin\Release\net8.0\publish` and can be deployed via VS Code or `az functionapp deployment source config-zip`.
+
+- Security & observability
+   - Functions use Function-level authorization by default; keys or managed identities are required for secure invocation.
+   - Application Insights is enabled (configured in `host.json`) for monitoring and telemetry.
+
+These assumptions are intended to make calling, testing and deploying the functions predictable. If you need stricter validation behavior (HTTP 4xx for malformed input) or different serialization settings, update the function code and tests accordingly.
 
 ## Troubleshooting
 
