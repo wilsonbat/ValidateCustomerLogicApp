@@ -16,7 +16,7 @@ namespace ValidationLibrary
         {
             if (string.IsNullOrWhiteSpace(email))
             {
-                return new ValidationResults { IsValid = false, Message = "Email null/invalid and proper email is required." };
+                return new ValidationResults { IsValid = false, Message = "Email is required." };
             }
 
             bool isValid = EmailRegex.IsMatch(email);
